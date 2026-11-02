@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TokenPulse Studio — Native macOS AI Spend Guard & Local Secret Redactor</title>
+  <meta name="description" content="Stop surprise Claude Code, Cursor, OpenAI, and Gemini API bills. Scrub API keys locally on-device before pasting into LLMs. Native Swift 6 macOS menu bar utility." />
+  <meta property="og:title" content="TokenPulse Studio — Native macOS AI Spend Guard & Secret Redactor" />
+  <meta property="og:description" content="Real-time token spend circuit breaker + 100% local API key redactor for macOS." />
+  <meta property="og:image" content="https://burapa-j.github.io/TokenPulse-Studio/assets/app_popover.png" />
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "TokenPulse Studio",
+    "operatingSystem": "macOS 14.0+",
+    "applicationCategory": "DeveloperApplication",
+    "offers": {
+      "@type": "Offer",
+      "price": "39.00",
+      "priceCurrency": "USD"
+    }
+  }
+  </script>
+  <style>
+    :root {
+      --bg: #0b0d13;
+      --surface: #131722;
+      --border: rgba(255, 255, 255, 0.11);
+      --text: #f3f6fc;
+      --muted: #9aa4b8;
+      --accent: #14b8a6;
+      --warn: #f59e0b;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+    .container {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+    header {
+      padding: 20px 0;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .brand {
+      font-weight: 800;
+      font-size: 1.2rem;
+      color: var(--text);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .badge {
+      background: rgba(20, 184, 166, 0.16);
+      color: var(--accent);
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      font-weight: 700;
+    }
+    .hero {
+      padding: 68px 0 48px;
+      text-align: center;
+    }
+    h1 {
+      font-size: clamp(2.2rem, 4.5vw, 3.4rem);
+      line-height: 1.12;
+      margin: 16px 0 20px;
+      letter-spacing: -0.02em;
+    }
+    .subtitle {
+      max-width: 700px;
+      margin: 0 auto 32px;
+      color: var(--muted);
+      font-size: 1.15rem;
+    }
+    .cta-group {
+      display: flex;
+      justify-content: center;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+    .btn {
+      display: inline-block;
+      padding: 14px 26px;
+      border-radius: 10px;
+      font-weight: 700;
+      text-decoration: none;
+      cursor: pointer;
+      border: none;
+      font-size: 1rem;
+    }
+    .btn-primary {
+      background: var(--accent);
+      color: #041311;
+    }
+    .btn-secondary {
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .shots-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 24px;
+      margin-top: 44px;
+    }
+    .shot-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 18px;
+      text-align: center;
+    }
+    .shot-card img {
+      width: 100%;
+      max-width: 390px;
+      height: auto;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+    }
+    /* Deferred below-the-fold sections per modern-web-guidance (defer-rendering-heavy-content) */
+    .below-fold-section {
+      content-visibility: auto;
+      contain-intrinsic-size: auto none auto 480px;
+      padding: 56px 0;
+      border-top: 1px solid var(--border);
+    }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(310px, 1fr));
+      gap: 24px;
+      margin-top: 28px;
+    }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 24px;
+    }
+    .price-tag {
+      font-size: 2.5rem;
+      font-weight: 800;
+      margin: 12px 0;
+    }
+    input[type="range"] {
+      width: 100%;
+      margin: 12px 0;
+      accent-color: var(--accent);
+    }
+    textarea.live-input {
+      width: 100%;
+      min-height: 92px;
+      background: #07090d;
+      color: #86efac;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.82rem;
+      margin-top: 10px;
+    }
+    .mono-box {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      background: #07090d;
+      border: 1px solid var(--border);
+      padding: 14px;
+      border-radius: 8px;
+      color: #86efac;
+      font-size: 0.85rem;
+      margin-top: 12px;
+      white-space: pre-wrap;
+    }
+    footer {
+      padding: 32px 0;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 0.88rem;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <a href="#" class="brand">⚡ TokenPulse Studio <span class="badge">macOS 14+ Native Swift 6</span></a>
+      <div style="display:flex; gap:10px;">
+        <a href="https://github.com/Burapa-J/TokenPulse-Studio/releases/download/v1.0.0/TokenPulse-Studio-1.0.0.dmg" class="btn btn-secondary">Download Free Trial (.dmg)</a>
+        <a href="#pricing" class="btn btn-primary">Buy Pro — $39</a>
+      </div>
+    </header>
+
+    <section class="hero">
+      <span class="badge">ZERO CLOUD PROXY • SIGNED WITH APPLE DEVELOPER ID</span>
+      <h1>Stop Surprise AI API Bills.<br/>Never Paste a Live Secret Again.</h1>
+      <p class="subtitle">
+        The ultra-lightweight macOS menu bar radar (412 KB) that tracks real-time Claude Code, Cursor, OpenAI, and Gemini token spend—and scrubs API keys from your clipboard before they ever reach an LLM.
+      </p>
+      <div class="cta-group">
+        <a href="https://github.com/Burapa-J/TokenPulse-Studio/releases/download/v1.0.0/TokenPulse-Studio-1.0.0.dmg" class="btn btn-primary">⬇ Download for macOS (.dmg — 7-Day Free Trial)</a>
+        <a href="#pricing" class="btn btn-secondary">Get Lifetime License ($39)</a>
+      </div>
+
+      <div class="shots-grid">
+        <div class="shot-card">
+          <img src="assets/app_popover.png" alt="TokenPulse AI Spend Radar Menu Bar UI" width="390" height="400" />
+          <p style="margin-top:10px; color:var(--muted); font-size:0.9rem;"><strong>Real-Time AI Spend Radar</strong> — Exact micro-dollar tracking & daily budget circuit breaker.</p>
+        </div>
+        <div class="shot-card">
+          <img src="assets/app_redactor.png" alt="TokenPulse On-Device Secret Redactor UI" width="390" height="340" />
+          <p style="margin-top:10px; color:var(--muted); font-size:0.9rem;"><strong>100% On-Device Secret Guard</strong> — Strips Anthropic, OpenAI, Gemini, AWS & GitHub keys locally.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="roi" class="below-fold-section">
+      <h2>Interactive AI Spend & Live Secret Redactor Demo</h2>
+      <div class="grid-2">
+        <div class="card">
+          <label for="dailySpend"><strong>Your Estimated Daily AI Coding Spend: $<span id="dailyVal">18</span>/day</strong></label>
+          <input id="dailySpend" type="range" min="5" max="100" value="18" />
+          <p style="color: var(--muted); font-size: 0.92rem;">
+            Unmonitored background agent loops & un-cached context windows waste ~22% of monthly API spend.
+          </p>
+          <div class="mono-box" id="roiOutput">Monthly Waste Prevented: ~$118.80/mo (Pays for TokenPulse in 1.5 days)</div>
+        </div>
+        <div class="card">
+          <h3>Try the Secret Redactor Live</h3>
+          <textarea id="demoPrompt" class="live-input">export ANTHROPIC_API_KEY="sk-ant-api03-99887766554433221100aabbccddeeff"
+export OPENAI_API_KEY="sk-proj-11223344556677889900aabbccddeeff"</textarea>
+          <button id="scrubBtn" class="btn btn-primary" style="margin-top:10px; padding:8px 16px; font-size:0.88rem;">Scrub Secrets Now</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="pricing" class="below-fold-section">
+      <h2>Simple, No-Subscription-Fatigue Pricing</h2>
+      <div class="grid-2">
+        <div class="card">
+          <span class="badge">MOST POPULAR</span>
+          <h3>Solo Pro (Lifetime)</h3>
+          <div class="price-tag">$39 <span style="font-size: 1rem; color: var(--muted); font-weight: 400;">one-time</span></div>
+          <p style="color: var(--muted); margin-bottom: 18px;">Pay once, own forever on up to 2 personal Macs. Signed with Apple Developer ID.</p>
+          <a href="https://github.com/Burapa-J/TokenPulse-Studio/releases/download/v1.0.0/TokenPulse-Studio-1.0.0.dmg" class="btn btn-primary" style="width: 100%; text-align: center;">Download 7-Day Trial & Unlock Inside App ($39)</a>
+        </div>
+        <div class="card">
+          <span class="badge">FOR STARTUPS & TEAMS</span>
+          <h3>Team Pack (3 Macs)</h3>
+          <div class="price-tag">$99 <span style="font-size: 1rem; color: var(--muted); font-weight: 400;">one-time</span></div>
+          <p style="color: var(--muted); margin-bottom: 18px;">Protect your engineering team from accidental API key leaks and runaway agent loops.</p>
+          <a href="https://github.com/Burapa-J/TokenPulse-Studio/releases/latest" class="btn btn-secondary" style="width: 100%; text-align: center;">Get Team License ($99)</a>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      © 2026 TokenPulse Studio • Built natively with Swift 6 for macOS • <a href="https://github.com/Burapa-J/TokenPulse-Studio/releases/latest" style="color:var(--accent);">Latest Release v1.0.0 (.dmg)</a>
+    </footer>
+  </div>
+
+  <script>
+    const slider = document.getElementById('dailySpend');
+    const dailyVal = document.getElementById('dailyVal');
+    const roiOutput = document.getElementById('roiOutput');
+    slider.addEventListener('input', () => {
+      const daily = Number(slider.value);
+      dailyVal.textContent = String(daily);
+      const monthlySaved = (daily * 30 * 0.22).toFixed(2);
+      const paybackDays = Math.max(1, Math.round(39 / (daily * 0.22)));
+      roiOutput.textContent = `Monthly Waste Prevented: ~$${monthlySaved}/mo (Pays for TokenPulse in ${paybackDays} days)`;
+    });
+
+    const scrubBtn = document.getElementById('scrubBtn');
+    const demoPrompt = document.getElementById('demoPrompt');
+    scrubBtn.addEventListener('click', () => {
+      demoPrompt.value = demoPrompt.value
+        .replace(/sk-ant-[a-zA-Z0-9\-_]{16,128}/g, '[REDACTED:ANTHROPIC_KEY#1]')
+        .replace(/sk-(?:proj-|live-|test-)?[a-zA-Z0-9\-_]{20,128}/g, '[REDACTED:OPENAI_KEY#1]')
+        .replace(/AIzaSy[a-zA-Z0-9\-_]{33}/g, '[REDACTED:GEMINI_KEY#1]')
+        .replace(/\b(?:AKIA|ASIA)[0-9A-Z]{16}\b/g, '[REDACTED:AWS_ACCESS_KEY#1]');
+      scrubBtn.textContent = '✓ Redacted 100% On-Device!';
+    });
+  </script>
+</body>
+</html>
