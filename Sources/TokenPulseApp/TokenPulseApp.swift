@@ -16,8 +16,10 @@ final class TokenPulseViewModel: ObservableObject {
     @Published var licenseKeyInput: String = ""
     @Published var licenseState: LicenseState
     @Published var statusBanner: String = "Monitoring local AI logs & clipboard guard"
+    @Published var scannedFileCount: Int = 0
 
     private let ledger: UsageLedger
+    private var fileCursors: [String: FileCursor] = [:]
 
     init() {
         let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
@@ -49,6 +51,11 @@ final class TokenPulseViewModel: ObservableObject {
 
     func bootstrapSampleAndLocalLogs() async {
         try? await ledger.loadFromDisk()
+        let watchDirs = LocalLogScanner.defaultWatchDirectories()
+        let scanReport = await LocalLogScanner.scanDirectories(watchDirs, into: ledger, cursors: fileCursors)
+        self.fileCursors = scanReport.updatedCursors
+        self.scannedFileCount = scanReport.scannedFilesCount
+
         let currentEvents = await ledger.allEventsSorted()
         if currentEvents.isEmpty {
             let nowISO = ISO8601DateFormatter().string(from: Date())
@@ -58,6 +65,17 @@ final class TokenPulseViewModel: ObservableObject {
             {"id":"init-3","provider":"gemini","model":"gemini-3-pro","project":"Data-Pipeline","timestamp":"\(nowISO)","usage":{"input_tokens":410000,"output_tokens":90000}}
             """
             _ = await ledger.ingestJSONL(demoJSONL)
+        }
+        try? await ledger.saveAtomically()
+        await refreshSummary()
+    }
+
+    func pollLocalLogsOnce() async {
+        let watchDirs = LocalLogScanner.defaultWatchDirectories()
+        let scanReport = await LocalLogScanner.scanDirectories(watchDirs, into: ledger, cursors: fileCursors)
+        self.fileCursors = scanReport.updatedCursors
+        self.scannedFileCount = scanReport.scannedFilesCount
+        if scanReport.ingestedEventsCount > 0 {
             try? await ledger.saveAtomically()
         }
         await refreshSummary()

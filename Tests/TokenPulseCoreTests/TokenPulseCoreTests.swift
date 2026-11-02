@@ -127,4 +127,81 @@ final class TokenPulseCoreTests: XCTestCase {
         XCTAssertFalse(LicenseValidator.verifyKey(validKey, email: "other@indiehackers.com"))
         XCTAssertFalse(LicenseValidator.verifyKey("TPPRO-DEADBEEF-00000000", email: email))
     }
+
+    // MARK: - Phase 2 Pre-Mortem #1: Incremental Byte-Offset & Incomplete Trailing Line Recovery
+    func testIncrementalAppendAndIncompleteTrailingLineRecovery() async throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let logFile = tempDir.appendingPathComponent("session.jsonl")
+        let line1 = #"{"id":"inc-1","provider":"anthropic","model":"claude-sonnet-4","timestamp":"2026-11-02T12:00:00Z","usage":{"input_tokens":100000,"output_tokens":10000}}"# + "\n"
+        let halfLine2PartA = #"{"id":"inc-2","provider":"openai","model":"gpt-4.1","timestamp":"2026-11-02T12:01:00Z","#
+        let halfLine2PartB = #""usage":{"prompt_tokens":200000,"completion_tokens":20000}}"# + "\n"
+
+        // Write complete line 1 + half-written line 2 (no trailing newline yet)
+        try Data((line1 + halfLine2PartA).utf8).write(to: logFile)
+
+        let ledger = UsageLedger()
+        let firstScan = await LocalLogScanner.scanDirectories([tempDir], into: ledger, cursors: [:])
+        XCTAssertEqual(firstScan.scannedFilesCount, 1)
+        XCTAssertEqual(firstScan.ingestedEventsCount, 1, "Only the complete newline-terminated line 1 should be ingested")
+        XCTAssertEqual(firstScan.skippedMalformedLinesCount, 0, "Half-written trailing line must remain buffered at byte offset, not skipped as malformed")
+
+        // Now flush the second half of line 2 with its trailing newline
+        let handle = try FileHandle(forWritingTo: logFile)
+        try handle.seekToEnd()
+        try handle.write(contentsOf: Data(halfLine2PartB.utf8))
+        try handle.close()
+
+        let secondScan = await LocalLogScanner.scanDirectories([tempDir], into: ledger, cursors: firstScan.updatedCursors)
+        XCTAssertEqual(secondScan.ingestedEventsCount, 1, "Completed line 2 should be ingested cleanly on next poll")
+        let allEvents = await ledger.allEventsSorted()
+        XCTAssertEqual(allEvents.count, 2)
+    }
+
+    // MARK: - Phase 2 Pre-Mortem #2: Log Rotation / Truncation Resets Byte Offset Safely
+    func testLogRotationOrTruncationResetsCursorSafely() async throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let logFile = tempDir.appendingPathComponent("rotated.jsonl")
+        let initialLines = """
+        {"id":"rot-1","provider":"anthropic","model":"claude-sonnet-4","timestamp":"2026-11-02T12:00:00Z","usage":{"input_tokens":100000,"output_tokens":10000}}
+        {"id":"rot-2","provider":"anthropic","model":"claude-sonnet-4","timestamp":"2026-11-02T12:05:00Z","usage":{"input_tokens":100000,"output_tokens":10000}}
+        """ + "\n"
+        try Data(initialLines.utf8).write(to: logFile)
+
+        let ledger = UsageLedger()
+        let scan1 = await LocalLogScanner.scanDirectories([tempDir], into: ledger, cursors: [:])
+        XCTAssertEqual(scan1.ingestedEventsCount, 2)
+
+        // Simulate log rotation: overwrite file with a shorter single-line file
+        let shorterRotatedLine = #"{"id":"rot-3","provider":"gemini","model":"gemini-3-pro","timestamp":"2026-11-02T12:10:00Z","usage":{"input_tokens":50000,"output_tokens":5000}}"# + "\n"
+        try Data(shorterRotatedLine.utf8).write(to: logFile, options: .atomic)
+
+        let scan2 = await LocalLogScanner.scanDirectories([tempDir], into: ledger, cursors: scan1.updatedCursors)
+        XCTAssertEqual(scan2.ingestedEventsCount, 1, "Truncated/rotated file must reset cursor to 0 and ingest rot-3")
+        let totalEvents = await ledger.allEventsSorted().count
+        XCTAssertEqual(totalEvents, 3)
+    }
+
+    // MARK: - Phase 2 Pre-Mortem #3: Nested Directory Traversal & Non-JSONL Filtering
+    func testDirectoryScannerFindsNestedJSONLAndIgnoresOtherFiles() async throws {
+        let rootDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let nestedDir = rootDir.appendingPathComponent("workspace-a/logs")
+        try FileManager.default.createDirectory(at: nestedDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: rootDir) }
+
+        let validJSONL = nestedDir.appendingPathComponent("claude.jsonl")
+        let ignoredTxt = nestedDir.appendingPathComponent("notes.txt")
+        try Data((#"{"id":"nest-1","provider":"anthropic","model":"claude-sonnet-4","timestamp":"2026-11-02T12:20:00Z","usage":{"input_tokens":100000,"output_tokens":20000}}"# + "\n").utf8).write(to: validJSONL)
+        try Data("not jsonl".utf8).write(to: ignoredTxt)
+
+        let ledger = UsageLedger()
+        let report = await LocalLogScanner.scanDirectories([rootDir], into: ledger)
+        XCTAssertEqual(report.scannedFilesCount, 1)
+        XCTAssertEqual(report.ingestedEventsCount, 1)
+    }
 }
