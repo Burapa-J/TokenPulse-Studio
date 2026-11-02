@@ -1,0 +1,8 @@
+.build/
+.swiftpm/
+.verify/
+todo.md
+*.app
+*.dmg
+*.pkg
+.DS_Store
