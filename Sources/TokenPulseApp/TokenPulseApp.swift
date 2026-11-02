@@ -95,45 +95,53 @@ final class TokenPulseViewModel: ObservableObject {
 
 struct TokenPulsePopoverView: View {
     @ObservedObject var viewModel: TokenPulseViewModel
-    @State private var selectedTab: Int = 0
+    @State private var selectedTab: Int
 
-    init(viewModel: TokenPulseViewModel) {
+    init(viewModel: TokenPulseViewModel, initialTab: Int = 0) {
         self.viewModel = viewModel
+        self._selectedTab = State(initialValue: initialTab)
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 14) {
             // Header
-            HStack {
-                Image(systemName: "waveform.path.ecg.rectangle.fill")
-                    .font(.title2)
-                    .foregroundStyle(.teal)
+            HStack(spacing: 10) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(Color.teal.opacity(0.2))
+                        .frame(width: 34, height: 34)
+                    Image(systemName: "waveform.path.ecg")
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundStyle(Color.teal)
+                }
                 VStack(alignment: .leading, spacing: 2) {
                     Text("TokenPulse Studio")
-                        .font(.headline)
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(.white)
                     Text(viewModel.statusBanner)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
+                        .font(.system(size: 11))
+                        .foregroundStyle(Color.white.opacity(0.65))
                         .lineLimit(1)
                 }
                 Spacer()
                 Text(viewModel.summary.dailyAlertState.badgeTitle)
-                    .font(.caption2.bold())
+                    .font(.system(size: 10, weight: .bold))
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
-                    .background(badgeColor.opacity(0.18))
+                    .background(badgeColor.opacity(0.2))
                     .foregroundStyle(badgeColor)
                     .clipShape(Capsule())
             }
 
-            Divider()
-
-            Picker("Mode", selection: $selectedTab) {
-                Text("AI Spend Radar").tag(0)
-                Text("Secret Redactor").tag(1)
-                Text("Pro License").tag(2)
+            // Custom SwiftUI Pill Tab Switcher
+            HStack(spacing: 6) {
+                tabPill(title: "AI Spend Radar", index: 0)
+                tabPill(title: "Secret Redactor", index: 1)
+                tabPill(title: "Pro License", index: 2)
             }
-            .pickerStyle(.segmented)
+            .padding(4)
+            .background(Color.white.opacity(0.06))
+            .clipShape(RoundedRectangle(cornerRadius: 8))
 
             if selectedTab == 0 {
                 spendRadarSection
@@ -144,26 +152,48 @@ struct TokenPulsePopoverView: View {
             }
 
             Divider()
+                .overlay(Color.white.opacity(0.12))
 
             HStack {
                 Text(licenseStatusLabel)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(Color.teal)
                 Spacer()
-                Button("Quit") {
-                    NSApplication.shared.terminate(nil)
-                }
-                .buttonStyle(.borderless)
-                .font(.caption)
+                Text("Quit ⌘Q")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(Color.white.opacity(0.6))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(Color.white.opacity(0.08))
+                    .clipShape(RoundedRectangle(cornerRadius: 5))
+                    .onTapGesture {
+                        NSApplication.shared.terminate(nil)
+                    }
             }
         }
-        .padding(14)
-        .frame(width: 380)
+        .padding(16)
+        .frame(width: 390)
+        .background(Color(red: 0.08, green: 0.09, blue: 0.13))
+    }
+
+    private func tabPill(title: String, index: Int) -> some View {
+        let isSelected = (selectedTab == index)
+        return Text(title)
+            .font(.system(size: 11, weight: isSelected ? .bold : .medium))
+            .foregroundStyle(isSelected ? Color.black : Color.white.opacity(0.75))
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 6)
+            .background(isSelected ? Color.teal : Color.clear)
+            .clipShape(RoundedRectangle(cornerRadius: 6))
+            .contentShape(Rectangle())
+            .onTapGesture {
+                selectedTab = index
+            }
     }
 
     private var badgeColor: Color {
         switch viewModel.summary.dailyAlertState {
-        case .withinBudget: return .green
+        case .withinBudget: return Color(red: 0.2, green: 0.9, blue: 0.5)
         case .warningApproaching: return .orange
         case .circuitBroken: return .red
         }
@@ -181,33 +211,44 @@ struct TokenPulsePopoverView: View {
     }
 
     private var spendRadarSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 10) {
                 metricCard(
                     title: "TODAY SPEND",
                     value: CurrencyFormatter.formatMicroUSD(viewModel.summary.todaySpentMicroUSD),
-                    subtitle: "\(viewModel.summary.todayTokens / 1000)k tokens"
+                    subtitle: "\(viewModel.summary.todayTokens / 1000)k tokens • $10.00 cap"
                 )
                 metricCard(
                     title: "MONTH SPEND",
                     value: CurrencyFormatter.formatMicroUSD(viewModel.summary.monthSpentMicroUSD),
-                    subtitle: "Budget: $150.00"
+                    subtitle: "Budget Cap: $150.00"
                 )
             }
 
-            Text("Spend by Provider")
-                .font(.caption.bold())
-                .foregroundStyle(.secondary)
+            Text("REAL-TIME SPEND BY PROVIDER")
+                .font(.system(size: 10, weight: .bold))
+                .foregroundStyle(Color.white.opacity(0.5))
 
-            ForEach(ProviderID.allCases, id: \.self) { provider in
-                let micro = viewModel.summary.spendByProvider[provider, default: 0]
-                if micro > 0 {
-                    HStack {
-                        Text(provider.displayName)
-                            .font(.caption)
-                        Spacer()
-                        Text(CurrencyFormatter.formatMicroUSD(micro))
-                            .font(.caption.monospacedDigit().bold())
+            VStack(spacing: 8) {
+                ForEach(ProviderID.allCases, id: \.self) { provider in
+                    let micro = viewModel.summary.spendByProvider[provider, default: 0]
+                    if micro > 0 {
+                        HStack {
+                            Circle()
+                                .fill(Color.teal)
+                                .frame(width: 6, height: 6)
+                            Text(provider.displayName)
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundStyle(.white)
+                            Spacer()
+                            Text(CurrencyFormatter.formatMicroUSD(micro))
+                                .font(.system(size: 12, weight: .bold, design: .monospaced))
+                                .foregroundStyle(.white)
+                        }
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 7)
+                        .background(Color.white.opacity(0.05))
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
                     }
                 }
             }
@@ -215,36 +256,46 @@ struct TokenPulsePopoverView: View {
     }
 
     private var secretRedactorSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("On-Device API Key & Secret Scrubbing (100% Local)")
-                .font(.caption.bold())
-                .foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 10) {
+            Text("ON-DEVICE API KEY & SECRET GUARD (100% LOCAL)")
+                .font(.system(size: 10, weight: .bold))
+                .foregroundStyle(Color.white.opacity(0.5))
 
-            TextEditor(text: $viewModel.inputPromptText)
-                .font(.system(.caption, design: .monospaced))
-                .frame(height: 110)
-                .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.gray.opacity(0.3)))
+            Text(viewModel.inputPromptText)
+                .font(.system(size: 11, design: .monospaced))
+                .foregroundStyle(Color(red: 0.65, green: 0.95, blue: 0.85))
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(10)
+                .background(Color.black.opacity(0.45))
+                .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.teal.opacity(0.35), lineWidth: 1))
+                .clipShape(RoundedRectangle(cornerRadius: 8))
 
             HStack {
                 if let res = viewModel.lastRedaction {
-                    Text("Detected: \(res.redactedCount) secret(s) • ~\(res.estimatedTokens) tokens")
-                        .font(.caption2)
-                        .foregroundStyle(res.redactedCount > 0 ? .orange : .secondary)
+                    Text("Shielded \(res.redactedCount) secret(s) • ~\(res.estimatedTokens) tokens")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(res.redactedCount > 0 ? Color.orange : Color.white.opacity(0.6))
                 }
                 Spacer()
-                Button("Scrub & Copy Safe Prompt") {
-                    viewModel.runRedactionAndCopy()
-                }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.small)
+                Text("Scrub & Copy Safe Prompt")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(.black)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(Color.teal)
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                    .onTapGesture {
+                        viewModel.runRedactionAndCopy()
+                    }
             }
         }
     }
 
     private var licenseSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Activate TokenPulse Studio Pro ($39 One-Time)")
-                .font(.caption.bold())
+        VStack(alignment: .leading, spacing: 10) {
+            Text("ACTIVATE TOKENPULSE STUDIO PRO ($39 LIFETIME)")
+                .font(.system(size: 10, weight: .bold))
+                .foregroundStyle(Color.white.opacity(0.5))
             TextField("Work Email (e.g. you@company.com)", text: $viewModel.licenseEmail)
                 .textFieldStyle(.roundedBorder)
                 .font(.caption)
@@ -252,11 +303,16 @@ struct TokenPulsePopoverView: View {
                 .textFieldStyle(.roundedBorder)
                 .font(.caption.monospaced())
             HStack {
-                Button("Activate License") {
-                    viewModel.activateLicense()
-                }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.small)
+                Text("Activate Pro Key")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(.black)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(Color.teal)
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                    .onTapGesture {
+                        viewModel.activateLicense()
+                    }
                 Spacer()
             }
         }
@@ -265,18 +321,20 @@ struct TokenPulsePopoverView: View {
     private func metricCard(title: String, value: String, subtitle: String) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(title)
-                .font(.caption2.bold())
-                .foregroundStyle(.secondary)
+                .font(.system(size: 10, weight: .bold))
+                .foregroundStyle(Color.white.opacity(0.55))
             Text(value)
-                .font(.title3.monospacedDigit().bold())
+                .font(.system(size: 22, weight: .bold, design: .rounded))
+                .foregroundStyle(.white)
             Text(subtitle)
-                .font(.caption2)
-                .foregroundStyle(.secondary)
+                .font(.system(size: 11))
+                .foregroundStyle(Color.white.opacity(0.6))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(10)
-        .background(Color.primary.opacity(0.05))
-        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .padding(12)
+        .background(Color.white.opacity(0.06))
+        .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.white.opacity(0.1), lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: 10))
     }
 }
 
@@ -288,12 +346,14 @@ struct TokenPulseApp: App {
         let args = CommandLine.arguments
         if let snapIdx = args.firstIndex(of: "--snapshot"), snapIdx + 1 < args.count {
             let outputPath = args[snapIdx + 1]
+            let tabIndex = args.contains("--tab1") ? 1 : 0
             Task { @MainActor in
                 let vm = TokenPulseViewModel()
                 await vm.bootstrapSampleAndLocalLogs()
-                let view = TokenPulsePopoverView(viewModel: vm)
-                    .environment(\.colorScheme, .dark)
-                    .background(Color(nsColor: .windowBackgroundColor))
+                if tabIndex == 1 {
+                    vm.runRedactionAndCopy()
+                }
+                let view = TokenPulsePopoverView(viewModel: vm, initialTab: tabIndex)
                 let renderer = ImageRenderer(content: view)
                 renderer.scale = 2.0
                 if let cgImage = renderer.cgImage {
