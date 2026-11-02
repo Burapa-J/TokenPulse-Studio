@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TokenPulse Studio — Native macOS AI Spend Guard & Local Secret Redactor</title>
+  <meta name="description" content="Stop surprise Claude/OpenAI/Gemini bills and scrub API keys locally before pasting into AI tools. Pure Swift 6 macOS menu bar utility." />
+  <style>
+    :root {
+      --bg: #0b0d13;
+      --surface: #131722;
+      --border: rgba(255, 255, 255, 0.1);
+      --text: #f3f6fc;
+      --muted: #9aa4b8;
+      --accent: #14b8a6;
+      --accent-dark: #0d9488;
+      --warn: #f59e0b;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+    .container {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+    header {
+      padding: 20px 0;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .brand {
+      font-weight: 800;
+      font-size: 1.2rem;
+      color: var(--text);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .badge {
+      background: rgba(20, 184, 166, 0.16);
+      color: var(--accent);
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      font-weight: 700;
+    }
+    .hero {
+      padding: 72px 0 56px;
+      text-align: center;
+    }
+    h1 {
+      font-size: clamp(2.2rem, 4.5vw, 3.5rem);
+      line-height: 1.12;
+      margin: 16px 0 20px;
+      letter-spacing: -0.02em;
+    }
+    .subtitle {
+      max-width: 680px;
+      margin: 0 auto 32px;
+      color: var(--muted);
+      font-size: 1.15rem;
+    }
+    .cta-group {
+      display: flex;
+      justify-content: center;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+    .btn {
+      display: inline-block;
+      padding: 14px 26px;
+      border-radius: 10px;
+      font-weight: 700;
+      text-decoration: none;
+      cursor: pointer;
+      border: none;
+      font-size: 1rem;
+    }
+    .btn-primary {
+      background: var(--accent);
+      color: #041311;
+    }
+    .btn-secondary {
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    /* Below-the-fold deferred sections per modern-web-guidance (defer-rendering-heavy-content) */
+    .below-fold-section {
+      content-visibility: auto;
+      contain-intrinsic-size: auto none auto 480px;
+      padding: 56px 0;
+      border-top: 1px solid var(--border);
+    }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(310px, 1fr));
+      gap: 24px;
+      margin-top: 28px;
+    }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 24px;
+    }
+    .price-tag {
+      font-size: 2.5rem;
+      font-weight: 800;
+      margin: 12px 0;
+    }
+    input[type="range"] {
+      width: 100%;
+      margin: 12px 0;
+      accent-color: var(--accent);
+    }
+    .mono-box {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      background: #07090d;
+      border: 1px solid var(--border);
+      padding: 14px;
+      border-radius: 8px;
+      color: #86efac;
+      font-size: 0.85rem;
+      margin-top: 12px;
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <a href="#" class="brand">⚡ TokenPulse Studio <span class="badge">macOS 14+ Native Swift 6</span></a>
+      <a href="#pricing" class="btn btn-primary">Get Pro — $39 Lifetime</a>
+    </header>
+
+    <section class="hero">
+      <span class="badge">ZERO CLOUD PROXY • 100% ON-DEVICE PRIVACY</span>
+      <h1>Stop Surprise AI API Bills.<br/>Never Paste a Live Secret Again.</h1>
+      <p class="subtitle">
+        The lightweight macOS menu bar radar that tracks real-time Claude Code, Cursor, OpenAI, and Gemini token spend—and scrubs API keys from your clipboard before they ever reach an LLM.
+      </p>
+      <div class="cta-group">
+        <a href="#pricing" class="btn btn-primary">Buy Lifetime License ($39)</a>
+        <a href="#roi" class="btn btn-secondary">Calculate Your Savings (7-Day Free Trial)</a>
+      </div>
+    </section>
+
+    <section id="roi" class="below-fold-section">
+      <h2>Interactive AI Spend & Leak ROI Calculator</h2>
+      <div class="grid-2">
+        <div class="card">
+          <label for="dailySpend"><strong>Your Estimated Daily AI Coding Spend: $<span id="dailyVal">18</span>/day</strong></label>
+          <input id="dailySpend" type="range" min="5" max="100" value="18" />
+          <p style="color: var(--muted); font-size: 0.92rem;">
+            Unmonitored background agent loops & un-cached context windows waste ~22% of monthly API spend.
+          </p>
+          <div class="mono-box" id="roiOutput">Monthly Waste Prevented: ~$118.80/mo (Pays for TokenPulse in 9 days)</div>
+        </div>
+        <div class="card">
+          <h3>1-Click On-Device Secret Redactor</h3>
+          <p style="color: var(--muted); font-size: 0.92rem;">
+            Automatically replaces Anthropic, OpenAI, Gemini, AWS, GitHub PAT, and PEM keys with safe placeholders:
+          </p>
+          <div class="mono-box">let claude = "[REDACTED:ANTHROPIC_KEY#1]"
+let aws = "[REDACTED:AWS_ACCESS_KEY#1]"</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="pricing" class="below-fold-section">
+      <h2>Simple, No-Subscription-Fatigue Pricing</h2>
+      <div class="grid-2">
+        <div class="card">
+          <span class="badge">MOST POPULAR</span>
+          <h3>Solo Pro (Lifetime)</h3>
+          <div class="price-tag">$39 <span style="font-size: 1rem; color: var(--muted); font-weight: 400;">one-time</span></div>
+          <p style="color: var(--muted); margin-bottom: 18px;">Pay once, own forever on up to 2 personal Macs. Signed & notarized with Apple Developer ID.</p>
+          <a href="https://polar.sh" class="btn btn-primary" style="width: 100%; text-align: center;">Buy Solo License ($39)</a>
+        </div>
+        <div class="card">
+          <span class="badge">FOR STARTUPS & TEAMS</span>
+          <h3>Team Pack (3 Macs)</h3>
+          <div class="price-tag">$99 <span style="font-size: 1rem; color: var(--muted); font-weight: 400;">one-time</span></div>
+          <p style="color: var(--muted); margin-bottom: 18px;">Protect your engineering team from accidental API key leaks and runaway agent loops.</p>
+          <a href="https://polar.sh" class="btn btn-secondary" style="width: 100%; text-align: center;">Buy Team Pack ($99)</a>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const slider = document.getElementById('dailySpend');
+    const dailyVal = document.getElementById('dailyVal');
+    const roiOutput = document.getElementById('roiOutput');
+    slider.addEventListener('input', () => {
+      const daily = Number(slider.value);
+      dailyVal.textContent = String(daily);
+      const monthlySaved = (daily * 30 * 0.22).toFixed(2);
+      const paybackDays = Math.max(1, Math.round(39 / (daily * 0.22)));
+      roiOutput.textContent = `Monthly Waste Prevented: ~$${monthlySaved}/mo (Pays for TokenPulse in ${paybackDays} days)`;
+    });
+  </script>
+</body>
+</html>
